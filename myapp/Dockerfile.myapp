@@ -1,0 +1,32 @@
+# Builder Stage
+FROM golang:1.19-alpine AS builder
+
+# Install necessary packages
+RUN apk add --no-cache git
+
+# Set the working directory
+WORKDIR /src
+
+# Copy only the go.mod file for dependency management
+COPY go.mod ./
+
+# Download dependencies (this will still use go.sum if it exists, but won't copy it into the image)
+RUN go mod download
+
+# Copy the main.go file into the working directory
+COPY main.go ./
+
+# Build the Go application as a statically linked binary
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o myapp .
+
+# Final Stage
+FROM alpine:latest
+
+# Set the working directory (optional)
+WORKDIR /app
+
+# Copy the compiled binary from the builder stage
+COPY --from=builder /src/myapp /app/myapp
+
+# Set the entrypoint for the container
+ENTRYPOINT ["/app/myapp"]
